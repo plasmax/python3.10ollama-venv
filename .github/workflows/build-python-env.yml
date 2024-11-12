@@ -28,7 +28,7 @@ jobs:
         docker rm $container_id
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3  # Updated to v3
       with:
         name: python_env.tar.gz
         path: ./python_env.tar.gz
