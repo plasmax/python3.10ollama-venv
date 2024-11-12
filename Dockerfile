@@ -1,34 +1,46 @@
-# Use a CentOS 7 base image to ensure compatibility
-FROM centos:7
+# Dockerfile
+FROM ubuntu:22.04 AS builder
 
-# Update repository metadata and install EPEL (Extra Packages for Enterprise Linux) for additional packages
-RUN yum -y update && \
-    yum -y install epel-release && \
-    yum clean all
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    curl \
+    libncurses5-dev \
+    libncursesw5-dev \
+    liblzma-dev \
+    tk-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Development Tools and required dependencies
-RUN yum -y groupinstall "Development Tools" && \
-    yum -y install wget openssl-devel bzip2-devel libffi-devel zlib-devel && \
-    yum clean all
+# Download and build Python
+WORKDIR /python-build
+RUN wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz \
+    && tar xzf Python-3.10.13.tgz
+WORKDIR /python-build/Python-3.10.13
+RUN ./configure --enable-optimizations --prefix=/opt/python3.10 \
+    && make -j$(nproc) \
+    && make install
 
-# Install Python 3.10
-RUN wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz && \
-    tar xzf Python-3.10.13.tgz && \
-    cd Python-3.10.13 && \
-    ./configure --prefix=/opt/python3.10 --enable-optimizations && \
-    make altinstall && \
-    cd .. && rm -rf Python-3.10.13*
+# Create and activate virtual environment
+RUN /opt/python3.10/bin/python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Update PATH to include new Python installation
-ENV PATH="/opt/python3.10/bin:$PATH"
+# Install required packages
+RUN pip install --no-cache-dir \
+    ollama \
+    langchain \
+    chromadb
 
-# Create a virtual environment and install packages
-RUN python3.10 -m venv /opt/python-venv && \
-    source /opt/python-venv/bin/activate && \
-    /opt/python-venv/bin/pip install --upgrade pip && \
-    /opt/python-venv/bin/pip install langchain chromadb ollama
+# Create portable archive
+WORKDIR /opt
+RUN tar -czf /python-portable.tar.gz python3.10 venv
 
-# Create a tar.gz archive of the Python installation and virtual environment
-RUN tar -czf /python_env.tar.gz /opt/python3.10 /opt/python-venv
-
-# The tar file is stored in /python_env.tar.gz
+# Final stage to get just the archive
+FROM scratch
+COPY --from=builder /python-portable.tar.gz /
