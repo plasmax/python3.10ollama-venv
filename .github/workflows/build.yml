@@ -2,7 +2,7 @@ name: Build Portable Python Environment
 
 on:
   push:
-    #branches: [ main ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
