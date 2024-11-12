@@ -26,7 +26,7 @@ jobs:
         
     - name: Extract portable Python archive
       run: |
-        docker create --name temp python-portable-builder:latest
+        docker create --name temp python-portable-builder
         docker cp temp:/python-portable.tar.gz .
         docker rm temp
         
