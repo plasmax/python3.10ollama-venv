@@ -2,17 +2,19 @@ name: Build Portable Python Environment
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    #branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -23,12 +25,14 @@ jobs:
         context: .
         load: true
         tags: python-portable-builder:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         
     - name: Extract portable Python archive
       run: |
-        docker create --name temp python-portable-builder
-        docker cp temp:/python-portable.tar.gz .
-        docker rm temp
+        id=$(docker create python-portable-builder:latest)
+        docker cp $id:/python-portable.tar.gz .
+        docker rm $id
         
     - name: Upload artifact
       uses: actions/upload-artifact@v4
