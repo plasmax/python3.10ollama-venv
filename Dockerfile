@@ -1,12 +1,11 @@
-# Dockerfile
 FROM ubuntu:22.04 AS builder
 
-# Prevent interactive prompts during installation
+# Prevent interactive prompts during build
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
+# Install build dependencies in a single layer to reduce image size
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     build-essential \
     libffi-dev \
@@ -22,21 +21,25 @@ RUN apt-get update && apt-get install -y \
     tk-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and build Python
+# Build Python
 WORKDIR /python-build
 RUN wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz \
-    && tar xzf Python-3.10.13.tgz
+    && tar xzf Python-3.10.13.tgz \
+    && rm Python-3.10.13.tgz
+
 WORKDIR /python-build/Python-3.10.13
 RUN ./configure --enable-optimizations --prefix=/opt/python3.10 \
     && make -j$(nproc) \
-    && make install
+    && make install \
+    && rm -rf /python-build
 
 # Create and activate virtual environment
 RUN /opt/python3.10/bin/python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install required packages
-RUN pip install --no-cache-dir \
+# Install Python packages
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir \
     ollama \
     langchain \
     chromadb
@@ -45,6 +48,6 @@ RUN pip install --no-cache-dir \
 WORKDIR /opt
 RUN tar -czf /python-portable.tar.gz python3.10 venv
 
-# Final stage to get just the archive
+# Final stage to minimize image size
 FROM scratch
 COPY --from=builder /python-portable.tar.gz /
