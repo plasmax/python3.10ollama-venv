@@ -1,54 +1,38 @@
-FROM ubuntu:22.04 AS builder
+# Start from a minimal base image
+FROM debian:bullseye-slim
 
-# Prevent interactive prompts during build
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Etc/UTC
+# Set environment variables
+ENV PYTHON_VERSION=3.10.12
+ENV PREFIX_DIR=/app/python
 
-# Install build dependencies in a single layer to reduce image size
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
+# Install dependencies for building Python
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     build-essential \
-    libffi-dev \
-    libssl-dev \
+    wget \
     zlib1g-dev \
+    libssl-dev \
     libbz2-dev \
     libreadline-dev \
     libsqlite3-dev \
     curl \
-    libncurses5-dev \
-    libncursesw5-dev \
-    liblzma-dev \
-    tk-dev \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Build Python
-WORKDIR /python-build
-RUN wget --no-check-certificate https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz \
-    && tar xzf Python-3.10.13.tgz \
-    && rm Python-3.10.13.tgz
+# Download and compile Python
+RUN wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz && \
+    tar -xf Python-${PYTHON_VERSION}.tgz && \
+    cd Python-${PYTHON_VERSION} && \
+    ./configure --prefix=$PREFIX_DIR --enable-optimizations && \
+    make -j$(nproc) && \
+    make altinstall && \
+    cd .. && rm -rf Python-${PYTHON_VERSION}.tgz Python-${PYTHON_VERSION}
 
-WORKDIR /python-build/Python-3.10.13
-RUN ./configure --enable-optimizations --prefix=/opt/python3.10 \
-    && make -j$(nproc) \
-    && make install \
-    && rm -rf /python-build
+# Install pip and required packages in a virtual environment
+RUN $PREFIX_DIR/bin/python3.10 -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir langchain ollama chromadb
 
-# Create and activate virtual environment
-RUN /opt/python3.10/bin/python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Package the Python installation and virtual environment as a tarball
+RUN tar -czf /app/python-venv.tar.gz -C /app python venv
 
-# Install Python packages
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir \
-    ollama \
-    langchain \
-    chromadb
-
-# Create portable archive
-WORKDIR /opt
-RUN tar -czf /python-portable.tar.gz python3.10 venv
-
-# Final stage to minimize image size
-FROM scratch
-COPY --from=builder /python-portable.tar.gz /
+# Keep the container running to allow for artifact extraction
+ENTRYPOINT ["tail", "-f", "/dev/null"]
