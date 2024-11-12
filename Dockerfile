@@ -19,11 +19,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libncursesw5-dev \
     liblzma-dev \
     tk-dev \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Build Python
 WORKDIR /python-build
-RUN wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz \
+RUN wget --no-check-certificate https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz \
     && tar xzf Python-3.10.13.tgz \
     && rm Python-3.10.13.tgz
 
