@@ -2,33 +2,37 @@ name: Build Portable Python Environment
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
+    - uses: actions/checkout@v4
+      
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
+      uses: docker/setup-buildx-action@v3
+      
     - name: Build Docker image
-      run: |
-        docker build -t portable-python-env .
-
-    - name: Create Container and Extract Artifact
-      run: |
-        container_id=$(docker create portable-python-env)
-        docker cp $container_id:/python_env.tar.gz ./python_env.tar.gz
-        docker rm $container_id
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3  # Updated to v3
+      uses: docker/build-push-action@v5
       with:
-        name: python_env.tar.gz
-        path: ./python_env.tar.gz
+        context: .
+        load: true
+        tags: python-portable-builder:latest
+        
+    - name: Extract portable Python archive
+      run: |
+        docker create --name temp python-portable-builder:latest
+        docker cp temp:/python-portable.tar.gz .
+        docker rm temp
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: portable-python-3.10
+        path: python-portable.tar.gz
+        retention-days: 30
