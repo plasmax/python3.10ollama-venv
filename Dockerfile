@@ -1,9 +1,15 @@
 # Use a CentOS 7 base image to ensure compatibility
 FROM centos:7
 
-# Install dependencies for building Python and Python packages
+# Update repository metadata and install EPEL (Extra Packages for Enterprise Linux) for additional packages
+RUN yum -y update && \
+    yum -y install epel-release && \
+    yum clean all
+
+# Install Development Tools and required dependencies
 RUN yum -y groupinstall "Development Tools" && \
-    yum -y install wget openssl-devel bzip2-devel libffi-devel zlib-devel
+    yum -y install wget openssl-devel bzip2-devel libffi-devel zlib-devel && \
+    yum clean all
 
 # Install Python 3.10
 RUN wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz && \
