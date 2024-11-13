@@ -28,7 +28,7 @@ jobs:
         # Install packages with specific pip version
         python -m pip install --upgrade pip==23.0.1  # Using a stable pip version
         pip install wheel  # Ensure wheel is available
-        pip install ollama langchain chromadb
+        pip install ollama langchain langchain-community onnxruntime chromadb
         
         # Record Python and pip versions for debugging
         python --version
