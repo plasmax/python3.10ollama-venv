@@ -5,7 +5,7 @@ on:
 
 jobs:
   create-venv:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04  # Specifically use Ubuntu 20.04 which has Python 3.9.10
     
     steps:
     - uses: actions/checkout@v3
@@ -17,10 +17,22 @@ jobs:
     
     - name: Create and populate virtual environment
       run: |
-        python -m venv venv
+        # Create venv without pip to ensure we control the pip version
+        python -m venv venv --without-pip
         source venv/bin/activate
-        python -m pip install --upgrade pip
+        
+        # Install pip manually to have more control
+        curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+        python get-pip.py --force-reinstall
+        
+        # Install packages with specific pip version
+        python -m pip install --upgrade pip==23.0.1  # Using a stable pip version
+        pip install wheel  # Ensure wheel is available
         pip install ollama langchain chromadb
+        
+        # Record Python and pip versions for debugging
+        python --version
+        pip --version
         deactivate
     
     - name: Create site-packages archive
